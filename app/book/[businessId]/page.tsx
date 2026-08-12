@@ -32,6 +32,15 @@ type BookingRecord = {
   service_id: string;
 };
 
+type LastBooking = {
+  customerName: string;
+  serviceName: string;
+  date: string;
+  time: string;
+  price: number | null;
+  duration: number;
+};
+
 const days = [
   "الأحد",
   "الإثنين",
@@ -74,6 +83,9 @@ export default function PublicBookingPage({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  const [lastBooking, setLastBooking] =
+    useState<LastBooking | null>(null);
+
   // =========================
   // Load Business
   // =========================
@@ -95,8 +107,15 @@ export default function PublicBookingPage({
         .maybeSingle();
 
       if (businessError) {
-        console.error("BUSINESS ERROR:", businessError);
-        setError("حدث خطأ أثناء تحميل بيانات النشاط.");
+        console.error(
+          "BUSINESS ERROR:",
+          businessError
+        );
+
+        setError(
+          "حدث خطأ أثناء تحميل بيانات النشاط."
+        );
+
         setLoading(false);
         return;
       }
@@ -128,7 +147,10 @@ export default function PublicBookingPage({
         });
 
       if (servicesError) {
-        console.error("SERVICES ERROR:", servicesError);
+        console.error(
+          "SERVICES ERROR:",
+          servicesError
+        );
 
         setError(
           "حدث خطأ أثناء تحميل الخدمات."
@@ -140,7 +162,10 @@ export default function PublicBookingPage({
 
       setServices(servicesData ?? []);
 
-      if (servicesData && servicesData.length > 0) {
+      if (
+        servicesData &&
+        servicesData.length > 0
+      ) {
         setServiceId(servicesData[0].id);
       }
 
@@ -162,7 +187,10 @@ export default function PublicBookingPage({
         });
 
       if (hoursError) {
-        console.error("HOURS ERROR:", hoursError);
+        console.error(
+          "HOURS ERROR:",
+          hoursError
+        );
 
         setError(
           "حدث خطأ أثناء تحميل مواعيد العمل."
@@ -196,7 +224,9 @@ export default function PublicBookingPage({
     loadBookingsForDate(bookingDate);
   }, [bookingDate, businessId]);
 
-  async function loadBookingsForDate(date: string) {
+  async function loadBookingsForDate(
+    date: string
+  ) {
     setLoadingTimes(true);
     setBookingTime("");
     setError("");
@@ -261,6 +291,7 @@ export default function PublicBookingPage({
     const today = new Date();
 
     const year = today.getFullYear();
+
     const month = String(
       today.getMonth() + 1
     ).padStart(2, "0");
@@ -275,7 +306,8 @@ export default function PublicBookingPage({
   function getSelectedService() {
     return (
       services.find(
-        (service) => service.id === serviceId
+        (service) =>
+          service.id === serviceId
       ) ?? null
     );
   }
@@ -291,7 +323,8 @@ export default function PublicBookingPage({
   }
 
   function getSelectedDayHours() {
-    const dayIndex = getSelectedDayIndex();
+    const dayIndex =
+      getSelectedDayIndex();
 
     if (dayIndex === null) {
       return null;
@@ -302,6 +335,72 @@ export default function PublicBookingPage({
         (hour) =>
           hour.day_of_week === dayIndex
       ) ?? null
+    );
+  }
+
+  function formatBookingDate(
+    date: string
+  ) {
+    return new Date(
+      `${date}T00:00:00`
+    ).toLocaleDateString("ar-EG", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+  }
+
+  // =========================
+  // WhatsApp
+  // =========================
+
+  function openWhatsApp() {
+    if (
+      !business?.phone ||
+      !lastBooking
+    ) {
+      return;
+    }
+
+    let phone =
+      business.phone.replace(/\D/g, "");
+
+    // Egyptian number:
+    // 010xxxxxxxx
+    // ↓
+    // 2010xxxxxxxx
+    if (phone.startsWith("01")) {
+      phone =
+        "20" + phone.slice(1);
+    }
+
+    const message = `
+السلام عليكم 👋
+
+أنا ${lastBooking.customerName}، عملت حجز في ${business.name} من خلال BookingOS.
+
+🛎️ الخدمة: ${lastBooking.serviceName}
+📅 التاريخ: ${formatBookingDate(
+      lastBooking.date
+    )}
+🕐 الوقت: ${lastBooking.time}
+${
+  lastBooking.price !== null
+    ? `💰 السعر: ${lastBooking.price} ج.م`
+    : ""
+}
+
+أرغب في تأكيد الحجز.
+    `.trim();
+
+    const whatsappUrl =
+      `https://wa.me/${phone}?text=` +
+      encodeURIComponent(message);
+
+    window.open(
+      whatsappUrl,
+      "_blank",
+      "noopener,noreferrer"
     );
   }
 
@@ -344,14 +443,18 @@ export default function PublicBookingPage({
     const duration =
       selectedService.duration ?? 30;
 
-    const availableTimes: string[] = [];
+    const availableTimes: string[] =
+      [];
 
     for (
       let start = openMinutes;
-      start + duration <= closeMinutes;
+      start + duration <=
+      closeMinutes;
       start += SLOT_INTERVAL
     ) {
-      const selectedStart = start;
+      const selectedStart =
+        start;
+
       const selectedEnd =
         start + duration;
 
@@ -460,7 +563,8 @@ export default function PublicBookingPage({
       return;
     }
 
-    const today = getTodayDate();
+    const today =
+      getTodayDate();
 
     if (bookingDate < today) {
       setError(
@@ -529,9 +633,18 @@ export default function PublicBookingPage({
       .select(
         "id, booking_time, service_id, status"
       )
-      .eq("business_id", businessId)
-      .eq("booking_date", bookingDate)
-      .neq("status", "cancelled");
+      .eq(
+        "business_id",
+        businessId
+      )
+      .eq(
+        "booking_date",
+        bookingDate
+      )
+      .neq(
+        "status",
+        "cancelled"
+      );
 
     if (existingError) {
       console.error(
@@ -551,7 +664,8 @@ export default function PublicBookingPage({
       getSelectedService();
 
     const selectedDuration =
-      selectedService?.duration ?? 30;
+      selectedService?.duration ??
+      30;
 
     const selectedStart =
       timeToMinutes(
@@ -647,6 +761,25 @@ export default function PublicBookingPage({
       setBooking(false);
       return;
     }
+
+    // =========================
+    // Save Last Booking
+    // =========================
+
+    setLastBooking({
+      customerName:
+        customerName.trim(),
+      serviceName:
+        selectedService?.name ?? "",
+      date: bookingDate,
+      time: bookingTime,
+      price:
+        selectedService?.price ??
+        null,
+      duration:
+        selectedService?.duration ??
+        30,
+    });
 
     setSuccess(true);
 
@@ -804,7 +937,8 @@ export default function PublicBookingPage({
               </p>
             </div>
 
-            {services.length === 0 ? (
+            {services.length ===
+            0 ? (
               <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
                 <div className="text-4xl">
                   🛎️
@@ -823,7 +957,9 @@ export default function PublicBookingPage({
                 {services.map(
                   (service) => (
                     <button
-                      key={service.id}
+                      key={
+                        service.id
+                      }
                       type="button"
                       onClick={() =>
                         handleServiceChange(
@@ -899,42 +1035,141 @@ export default function PublicBookingPage({
               </p>
             </div>
 
+            {/* SUCCESS */}
+
             {success ? (
-              <div className="rounded-3xl border border-green-200 bg-green-50 p-8 text-center">
-                <div className="text-6xl">
-                  ✅
+              <div className="rounded-3xl border border-green-200 bg-green-50 p-6 text-center sm:p-8">
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-4xl">
+                  ✓
                 </div>
 
                 <h2 className="mt-5 text-2xl font-bold text-green-800">
-                  تم إرسال الحجز بنجاح
+                  تم إرسال الحجز بنجاح 🎉
                 </h2>
 
                 <p className="mt-3 text-sm leading-7 text-green-700">
                   تم تسجيل طلب الحجز بنجاح.
                   <br />
-                  سيتم التواصل معك لتأكيد الموعد.
+                  يمكنك التواصل مع النشاط لتأكيد الموعد.
                 </p>
+
+                {lastBooking && (
+                  <div className="mt-6 rounded-2xl border border-green-200 bg-white p-5 text-right">
+                    <p className="mb-4 text-sm font-bold text-slate-800">
+                      تفاصيل حجزك
+                    </p>
+
+                    <div className="space-y-3 text-sm text-slate-600">
+                      <div className="flex justify-between gap-4">
+                        <span className="font-semibold text-slate-800">
+                          الخدمة
+                        </span>
+
+                        <span>
+                          {
+                            lastBooking.serviceName
+                          }
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between gap-4">
+                        <span className="font-semibold text-slate-800">
+                          التاريخ
+                        </span>
+
+                        <span>
+                          {formatBookingDate(
+                            lastBooking.date
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between gap-4">
+                        <span className="font-semibold text-slate-800">
+                          الوقت
+                        </span>
+
+                        <span>
+                          {
+                            lastBooking.time
+                          }
+                        </span>
+                      </div>
+
+                      {lastBooking.price !==
+                        null && (
+                        <div className="flex justify-between gap-4">
+                          <span className="font-semibold text-slate-800">
+                            السعر
+                          </span>
+
+                          <span>
+                            {
+                              lastBooking.price
+                            }{" "}
+                            ج.م
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between gap-4">
+                        <span className="font-semibold text-slate-800">
+                          المدة
+                        </span>
+
+                        <span>
+                          {
+                            lastBooking.duration
+                          }{" "}
+                          دقيقة
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {business.phone &&
+                  lastBooking && (
+                    <button
+                      type="button"
+                      onClick={
+                        openWhatsApp
+                      }
+                      className="mt-6 w-full rounded-xl bg-green-600 px-6 py-4 font-bold text-white shadow-lg shadow-green-600/20 transition hover:bg-green-700"
+                    >
+                      💬 تواصل عبر WhatsApp
+                    </button>
+                  )}
 
                 <button
                   type="button"
                   onClick={() => {
-                    setSuccess(false);
+                    setSuccess(
+                      false
+                    );
+
+                    setLastBooking(
+                      null
+                    );
 
                     if (
                       services.length >
                       0
                     ) {
                       setServiceId(
-                        services[0].id
+                        services[0]
+                          .id
                       );
                     }
                   }}
-                  className="mt-6 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white transition hover:bg-green-700"
+                  className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
                   حجز موعد آخر
                 </button>
               </div>
             ) : (
+              /* FORM */
+
               <form
                 onSubmit={
                   handleBooking
@@ -959,7 +1194,9 @@ export default function PublicBookingPage({
                       value={
                         customerName
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         setCustomerName(
                           event.target
                             .value
@@ -987,7 +1224,9 @@ export default function PublicBookingPage({
                       value={
                         customerPhone
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         setCustomerPhone(
                           event.target
                             .value
@@ -1005,7 +1244,7 @@ export default function PublicBookingPage({
                       htmlFor="customerEmail"
                       className="mb-2 block text-sm font-semibold"
                     >
-                      البريد الإلكتروني
+                      البريد الإلكتروني{" "}
                       <span className="mr-1 text-xs font-normal text-slate-400">
                         اختياري
                       </span>
@@ -1017,7 +1256,9 @@ export default function PublicBookingPage({
                       value={
                         customerEmail
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         setCustomerEmail(
                           event.target
                             .value
@@ -1046,7 +1287,9 @@ export default function PublicBookingPage({
                       value={
                         bookingDate
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         handleDateChange(
                           event.target
                             .value
@@ -1148,7 +1391,7 @@ export default function PublicBookingPage({
                       htmlFor="notes"
                       className="mb-2 block text-sm font-semibold"
                     >
-                      ملاحظات
+                      ملاحظات{" "}
                       <span className="mr-1 text-xs font-normal text-slate-400">
                         اختياري
                       </span>
@@ -1157,8 +1400,12 @@ export default function PublicBookingPage({
                     <textarea
                       id="notes"
                       rows={4}
-                      value={notes}
-                      onChange={(event) =>
+                      value={
+                        notes
+                      }
+                      onChange={(
+                        event
+                      ) =>
                         setNotes(
                           event.target
                             .value
@@ -1193,14 +1440,18 @@ export default function PublicBookingPage({
                             <span className="font-semibold">
                               التاريخ:
                             </span>{" "}
-                            {bookingDate}
+                            {
+                              bookingDate
+                            }
                           </p>
 
                           <p>
                             <span className="font-semibold">
                               الوقت:
                             </span>{" "}
-                            {bookingTime}
+                            {
+                              bookingTime
+                            }
                           </p>
 
                           {selectedService.price !==
@@ -1220,8 +1471,10 @@ export default function PublicBookingPage({
                             <span className="font-semibold">
                               المدة:
                             </span>{" "}
-                            {selectedService.duration ??
-                              30}{" "}
+                            {
+                              selectedService.duration ??
+                              30
+                            }{" "}
                             دقيقة
                           </p>
                         </div>
