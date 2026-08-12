@@ -63,9 +63,9 @@ export default function PublicBookingPage({
   const [business, setBusiness] = useState<Business | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [businessHours, setBusinessHours] = useState<BusinessHour[]>([]);
-  const [bookingsForDate, setBookingsForDate] = useState<
-    BookingRecord[]
-  >([]);
+  const [bookingsForDate, setBookingsForDate] = useState<BookingRecord[]>(
+    []
+  );
 
   const [serviceId, setServiceId] = useState("");
   const [bookingDate, setBookingDate] = useState("");
@@ -365,10 +365,6 @@ export default function PublicBookingPage({
     let phone =
       business.phone.replace(/\D/g, "");
 
-    // Egyptian number:
-    // 010xxxxxxxx
-    // ↓
-    // 2010xxxxxxxx
     if (phone.startsWith("01")) {
       phone =
         "20" + phone.slice(1);
@@ -653,7 +649,9 @@ ${
       );
 
       setError(
-        "حدث خطأ أثناء التحقق من الموعد."
+        `حدث خطأ أثناء التحقق من الموعد: ${
+          existingError.message
+        }`
       );
 
       setBooking(false);
@@ -755,7 +753,13 @@ ${
       );
 
       setError(
-        "لم نتمكن من إنشاء الحجز. حاول مرة أخرى."
+        `لم نتمكن من إنشاء الحجز: ${
+          bookingError.message
+        }${
+          bookingError.code
+            ? ` (Code: ${bookingError.code})`
+            : ""
+        }`
       );
 
       setBooking(false);
@@ -861,8 +865,6 @@ ${
       dir="rtl"
       className="min-h-screen bg-slate-100 text-slate-900"
     >
-      {/* Header */}
-
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-5xl px-6 py-6">
           <div className="flex items-center justify-between gap-4">
@@ -887,8 +889,6 @@ ${
       </header>
 
       <div className="mx-auto max-w-5xl px-6 py-10">
-        {/* Business Hero */}
-
         <section className="rounded-3xl bg-slate-900 p-8 text-white shadow-sm">
           <div className="max-w-3xl">
             <p className="text-sm font-medium text-blue-400">
@@ -913,19 +913,13 @@ ${
           </div>
         </section>
 
-        {/* Error */}
-
         {error && (
           <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm leading-7 text-red-700">
             {error}
           </div>
         )}
 
-        {/* Main */}
-
         <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_1.2fr]">
-          {/* Services */}
-
           <section>
             <div className="mb-5">
               <h2 className="text-xl font-bold">
@@ -937,8 +931,7 @@ ${
               </p>
             </div>
 
-            {services.length ===
-            0 ? (
+            {services.length === 0 ? (
               <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
                 <div className="text-4xl">
                   🛎️
@@ -957,9 +950,7 @@ ${
                 {services.map(
                   (service) => (
                     <button
-                      key={
-                        service.id
-                      }
+                      key={service.id}
                       type="button"
                       onClick={() =>
                         handleServiceChange(
@@ -976,9 +967,7 @@ ${
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
                           <h3 className="font-bold">
-                            {
-                              service.name
-                            }
+                            {service.name}
                           </h3>
 
                           {service.description && (
@@ -1002,9 +991,7 @@ ${
                         {service.price !==
                           null && (
                           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                            {
-                              service.price
-                            }{" "}
+                            {service.price}{" "}
                             ج.م
                           </span>
                         )}
@@ -1022,8 +1009,6 @@ ${
             )}
           </section>
 
-          {/* Booking */}
-
           <section>
             <div className="mb-5">
               <h2 className="text-xl font-bold">
@@ -1034,8 +1019,6 @@ ${
                 املأ بياناتك واختر الموعد المناسب لك.
               </p>
             </div>
-
-            {/* SUCCESS */}
 
             {success ? (
               <div className="rounded-3xl border border-green-200 bg-green-50 p-6 text-center sm:p-8">
@@ -1144,21 +1127,15 @@ ${
                 <button
                   type="button"
                   onClick={() => {
-                    setSuccess(
-                      false
-                    );
-
-                    setLastBooking(
-                      null
-                    );
+                    setSuccess(false);
+                    setLastBooking(null);
 
                     if (
                       services.length >
                       0
                     ) {
                       setServiceId(
-                        services[0]
-                          .id
+                        services[0].id
                       );
                     }
                   }}
@@ -1168,17 +1145,11 @@ ${
                 </button>
               </div>
             ) : (
-              /* FORM */
-
               <form
-                onSubmit={
-                  handleBooking
-                }
+                onSubmit={handleBooking}
                 className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
               >
                 <div className="space-y-5">
-                  {/* Name */}
-
                   <div>
                     <label
                       htmlFor="customerName"
@@ -1191,23 +1162,16 @@ ${
                       id="customerName"
                       type="text"
                       required
-                      value={
-                        customerName
-                      }
-                      onChange={(
-                        event
-                      ) =>
+                      value={customerName}
+                      onChange={(event) =>
                         setCustomerName(
-                          event.target
-                            .value
+                          event.target.value
                         )
                       }
                       placeholder="اكتب اسمك"
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                     />
                   </div>
-
-                  {/* Phone */}
 
                   <div>
                     <label
@@ -1221,23 +1185,16 @@ ${
                       id="customerPhone"
                       type="tel"
                       required
-                      value={
-                        customerPhone
-                      }
-                      onChange={(
-                        event
-                      ) =>
+                      value={customerPhone}
+                      onChange={(event) =>
                         setCustomerPhone(
-                          event.target
-                            .value
+                          event.target.value
                         )
                       }
                       placeholder="01xxxxxxxxx"
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                     />
                   </div>
-
-                  {/* Email */}
 
                   <div>
                     <label
@@ -1253,23 +1210,16 @@ ${
                     <input
                       id="customerEmail"
                       type="email"
-                      value={
-                        customerEmail
-                      }
-                      onChange={(
-                        event
-                      ) =>
+                      value={customerEmail}
+                      onChange={(event) =>
                         setCustomerEmail(
-                          event.target
-                            .value
+                          event.target.value
                         )
                       }
                       placeholder="example@email.com"
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                     />
                   </div>
-
-                  {/* Date */}
 
                   <div>
                     <label
@@ -1284,15 +1234,10 @@ ${
                       type="date"
                       required
                       min={getTodayDate()}
-                      value={
-                        bookingDate
-                      }
-                      onChange={(
-                        event
-                      ) =>
+                      value={bookingDate}
+                      onChange={(event) =>
                         handleDateChange(
-                          event.target
-                            .value
+                          event.target.value
                         )
                       }
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
@@ -1331,8 +1276,6 @@ ${
                       </div>
                     )}
                   </div>
-
-                  {/* Time */}
 
                   <div>
                     <label className="mb-2 block text-sm font-semibold">
@@ -1384,8 +1327,6 @@ ${
                     )}
                   </div>
 
-                  {/* Notes */}
-
                   <div>
                     <label
                       htmlFor="notes"
@@ -1400,23 +1341,16 @@ ${
                     <textarea
                       id="notes"
                       rows={4}
-                      value={
-                        notes
-                      }
-                      onChange={(
-                        event
-                      ) =>
+                      value={notes}
+                      onChange={(event) =>
                         setNotes(
-                          event.target
-                            .value
+                          event.target.value
                         )
                       }
                       placeholder="أي ملاحظات إضافية..."
                       className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                     />
                   </div>
-
-                  {/* Summary */}
 
                   {selectedService &&
                     bookingDate &&
@@ -1440,18 +1374,14 @@ ${
                             <span className="font-semibold">
                               التاريخ:
                             </span>{" "}
-                            {
-                              bookingDate
-                            }
+                            {bookingDate}
                           </p>
 
                           <p>
                             <span className="font-semibold">
                               الوقت:
                             </span>{" "}
-                            {
-                              bookingTime
-                            }
+                            {bookingTime}
                           </p>
 
                           {selectedService.price !==
@@ -1481,8 +1411,6 @@ ${
                       </div>
                     )}
 
-                  {/* Submit */}
-
                   <button
                     type="submit"
                     disabled={
@@ -1506,8 +1434,6 @@ ${
             )}
           </section>
         </div>
-
-        {/* Contact */}
 
         {(business.phone ||
           business.email) && (
@@ -1537,8 +1463,6 @@ ${
             </div>
           </section>
         )}
-
-        {/* Footer */}
 
         <footer className="py-8 text-center text-xs text-slate-400">
           Powered by BookingOS
