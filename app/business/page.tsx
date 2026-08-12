@@ -75,7 +75,6 @@ export default function BusinessPage() {
 
       if (businessError) {
         console.error(businessError);
-
         setError("حدث خطأ أثناء تحميل بيانات النشاط.");
         setLoading(false);
         return;
@@ -142,9 +141,6 @@ export default function BusinessPage() {
     loadBusiness();
   }, [router]);
 
-  /*
-   * إنشاء رابط الحجز و QR Code
-   */
   useEffect(() => {
     if (!businessId) {
       setBookingUrl("");
@@ -164,8 +160,8 @@ export default function BusinessPage() {
       .then((dataUrl) => {
         setQrCodeUrl(dataUrl);
       })
-      .catch((error) => {
-        console.error("QR Code error:", error);
+      .catch((qrError) => {
+        console.error("QR Code error:", qrError);
         setQrCodeUrl("");
       });
   }, [businessId]);
@@ -187,9 +183,6 @@ export default function BusinessPage() {
     );
   }
 
-  /*
-   * نسخ رابط الحجز
-   */
   async function copyBookingLink() {
     if (!bookingUrl) return;
 
@@ -201,14 +194,11 @@ export default function BusinessPage() {
       setTimeout(() => {
         setCopied(false);
       }, 2000);
-    } catch (error) {
-      console.error("Copy error:", error);
+    } catch (copyError) {
+      console.error("Copy error:", copyError);
     }
   }
 
-  /*
-   * تحميل QR Code
-   */
   function downloadQRCode() {
     if (!qrCodeUrl) return;
 
@@ -222,9 +212,6 @@ export default function BusinessPage() {
     document.body.removeChild(link);
   }
 
-  /*
-   * طباعة QR Code
-   */
   function printQRCode() {
     if (!qrCodeUrl) return;
 
@@ -312,9 +299,7 @@ export default function BusinessPage() {
 
             <h1>${safeName}</h1>
 
-            <p>
-              امسح الكود للحجز
-            </p>
+            <p>امسح الكود للحجز</p>
 
             <div class="brand">
               Powered by BookingOS
@@ -347,6 +332,7 @@ export default function BusinessPage() {
     } = await supabase.auth.getUser();
 
     if (!user) {
+      setSaving(false);
       router.replace("/login");
       return;
     }
@@ -370,7 +356,6 @@ export default function BusinessPage() {
         setError(
           `حدد وقت الفتح والإغلاق ليوم ${days[hour.day_of_week]}.`
         );
-
         setSaving(false);
         return;
       }
@@ -379,7 +364,6 @@ export default function BusinessPage() {
         setError(
           `وقت الإغلاق يجب أن يكون بعد وقت الفتح ليوم ${days[hour.day_of_week]}.`
         );
-
         setSaving(false);
         return;
       }
@@ -462,7 +446,6 @@ export default function BusinessPage() {
       }
 
       currentBusinessId = newBusiness.id;
-
       setBusinessId(newBusiness.id);
     }
 
@@ -498,6 +481,10 @@ export default function BusinessPage() {
     setSuccess(
       "تم حفظ بيانات النشاط ومواعيد العمل بنجاح ✅"
     );
+
+    setTimeout(() => {
+      router.replace("/dashboard");
+    }, 1000);
   }
 
   if (loading) {
@@ -536,9 +523,8 @@ export default function BusinessPage() {
           </div>
 
           <button
-            onClick={() =>
-              router.push("/dashboard")
-            }
+            type="button"
+            onClick={() => router.push("/dashboard")}
             className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
             العودة للوحة التحكم
@@ -557,8 +543,8 @@ export default function BusinessPage() {
           </h1>
 
           <p className="mt-3 max-w-2xl leading-7 text-slate-500">
-            أدخل بيانات نشاطك الأساسية وحدد مواعيد
-            العمل التي يستطيع العملاء الحجز خلالها.
+            أدخل بيانات نشاطك الأساسية وحدد مواعيد العمل
+            التي يستطيع العملاء الحجز خلالها.
           </p>
         </div>
 
@@ -841,15 +827,13 @@ export default function BusinessPage() {
                 </h2>
 
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                  شارك رابط الحجز مع عملائك أو اطبع
-                  QR Code وضعه داخل نشاطك ليتمكن
-                  العملاء من فتح صفحة الحجز بسرعة.
+                  شارك رابط الحجز مع عملائك أو اطبع QR
+                  Code وضعه داخل نشاطك ليتمكن العملاء
+                  من فتح صفحة الحجز بسرعة.
                 </p>
               </div>
 
               <div className="grid gap-8 lg:grid-cols-[1fr_300px] lg:items-center">
-                {/* Link Side */}
-
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-700">
                     رابط الحجز الخاص بنشاطك
@@ -907,8 +891,6 @@ export default function BusinessPage() {
                   </div>
                 </div>
 
-                {/* QR Side */}
-
                 <div className="flex flex-col items-center">
                   <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
                     {qrCodeUrl ? (
@@ -935,8 +917,8 @@ export default function BusinessPage() {
                   </p>
 
                   <p className="mt-1 text-center text-xs text-slate-400">
-                    اطبعه وضعه على المكتب أو في
-                    مكان واضح للعملاء
+                    اطبعه وضعه على المكتب أو في مكان واضح
+                    للعملاء
                   </p>
                 </div>
               </div>
@@ -962,9 +944,7 @@ export default function BusinessPage() {
           <div className="flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
             <button
               type="button"
-              onClick={() =>
-                router.push("/dashboard")
-              }
+              onClick={() => router.push("/dashboard")}
               className="rounded-xl border border-slate-200 bg-white px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               إلغاء
