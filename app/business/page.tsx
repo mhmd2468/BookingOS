@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import QRCode from "qrcode";
 import { supabase } from "@/lib/supabase";
 
 type BusinessHour = {
@@ -45,6 +46,10 @@ export default function BusinessPage() {
   const [businessHours, setBusinessHours] =
     useState<BusinessHour[]>(defaultHours);
 
+  const [bookingUrl, setBookingUrl] = useState("");
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -62,20 +67,16 @@ export default function BusinessPage() {
         return;
       }
 
-      const { data, error: businessError } =
-        await supabase
-          .from("businesses")
-          .select("*")
-          .eq("owner_id", user.id)
-          .maybeSingle();
+      const { data, error: businessError } = await supabase
+        .from("businesses")
+        .select("*")
+        .eq("owner_id", user.id)
+        .maybeSingle();
 
       if (businessError) {
         console.error(businessError);
 
-        setError(
-          "حدث خطأ أثناء تحميل بيانات النشاط."
-        );
-
+        setError("حدث خطأ أثناء تحميل بيانات النشاط.");
         setLoading(false);
         return;
       }
@@ -119,8 +120,7 @@ export default function BusinessPage() {
               }
 
               return {
-                day_of_week:
-                  savedHour.day_of_week,
+                day_of_week: savedHour.day_of_week,
                 is_open: savedHour.is_open,
                 open_time:
                   savedHour.open_time?.slice(0, 5) ??
@@ -142,6 +142,34 @@ export default function BusinessPage() {
     loadBusiness();
   }, [router]);
 
+  /*
+   * إنشاء رابط الحجز و QR Code
+   */
+  useEffect(() => {
+    if (!businessId) {
+      setBookingUrl("");
+      setQrCodeUrl("");
+      return;
+    }
+
+    const url = `${window.location.origin}/book/${businessId}`;
+
+    setBookingUrl(url);
+
+    QRCode.toDataURL(url, {
+      width: 600,
+      margin: 2,
+      errorCorrectionLevel: "H",
+    })
+      .then((dataUrl) => {
+        setQrCodeUrl(dataUrl);
+      })
+      .catch((error) => {
+        console.error("QR Code error:", error);
+        setQrCodeUrl("");
+      });
+  }, [businessId]);
+
   function updateBusinessHour(
     dayIndex: number,
     field: keyof BusinessHour,
@@ -157,6 +185,152 @@ export default function BusinessPage() {
           : hour
       )
     );
+  }
+
+  /*
+   * نسخ رابط الحجز
+   */
+  async function copyBookingLink() {
+    if (!bookingUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(bookingUrl);
+
+      setCopied(true);
+
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    } catch (error) {
+      console.error("Copy error:", error);
+    }
+  }
+
+  /*
+   * تحميل QR Code
+   */
+  function downloadQRCode() {
+    if (!qrCodeUrl) return;
+
+    const link = document.createElement("a");
+
+    link.href = qrCodeUrl;
+    link.download = `${name || "bookingos"}-qr-code.png`;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  /*
+   * طباعة QR Code
+   */
+  function printQRCode() {
+    if (!qrCodeUrl) return;
+
+    const printWindow = window.open(
+      "",
+      "_blank",
+      "width=800,height=900"
+    );
+
+    if (!printWindow) {
+      setError(
+        "المتصفح منع نافذة الطباعة. اسمح بالنوافذ المنبثقة ثم حاول مرة أخرى."
+      );
+      return;
+    }
+
+    const safeName = name || "BookingOS";
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="ar" dir="rtl">
+        <head>
+          <meta charset="UTF-8" />
+          <title>QR Code - ${safeName}</title>
+
+          <style>
+            * {
+              box-sizing: border-box;
+            }
+
+            body {
+              margin: 0;
+              min-height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: white;
+              font-family: Arial, sans-serif;
+            }
+
+            .card {
+              text-align: center;
+              padding: 40px;
+            }
+
+            img {
+              width: 360px;
+              height: 360px;
+              object-fit: contain;
+            }
+
+            h1 {
+              margin: 25px 0 10px;
+              font-size: 30px;
+              color: #0f172a;
+            }
+
+            p {
+              margin: 0;
+              color: #64748b;
+              font-size: 17px;
+            }
+
+            .brand {
+              margin-top: 25px;
+              font-size: 14px;
+              color: #2563eb;
+              font-weight: bold;
+            }
+
+            @media print {
+              body {
+                min-height: auto;
+              }
+            }
+          </style>
+        </head>
+
+        <body>
+          <div class="card">
+            <img
+              src="${qrCodeUrl}"
+              alt="QR Code"
+            />
+
+            <h1>${safeName}</h1>
+
+            <p>
+              امسح الكود للحجز
+            </p>
+
+            <div class="brand">
+              Powered by BookingOS
+            </div>
+          </div>
+
+          <script>
+            window.onload = function () {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
   }
 
   async function handleSave(
@@ -211,12 +385,14 @@ export default function BusinessPage() {
       }
     }
 
-    const { data: existingBusiness, error: checkError } =
-      await supabase
-        .from("businesses")
-        .select("id")
-        .eq("owner_id", user.id)
-        .maybeSingle();
+    const {
+      data: existingBusiness,
+      error: checkError,
+    } = await supabase
+      .from("businesses")
+      .select("id")
+      .eq("owner_id", user.id)
+      .maybeSingle();
 
     if (checkError) {
       console.error(checkError);
@@ -258,19 +434,21 @@ export default function BusinessPage() {
         return;
       }
     } else {
-      const { data: newBusiness, error: insertError } =
-        await supabase
-          .from("businesses")
-          .insert({
-            owner_id: user.id,
-            name: name.trim(),
-            type,
-            phone: phone.trim(),
-            email: email.trim(),
-            description: description.trim(),
-          })
-          .select("id")
-          .single();
+      const {
+        data: newBusiness,
+        error: insertError,
+      } = await supabase
+        .from("businesses")
+        .insert({
+          owner_id: user.id,
+          name: name.trim(),
+          type,
+          phone: phone.trim(),
+          email: email.trim(),
+          description: description.trim(),
+        })
+        .select("id")
+        .single();
 
       if (insertError || !newBusiness) {
         console.error(insertError);
@@ -284,6 +462,7 @@ export default function BusinessPage() {
       }
 
       currentBusinessId = newBusiness.id;
+
       setBusinessId(newBusiness.id);
     }
 
@@ -315,6 +494,7 @@ export default function BusinessPage() {
     }
 
     setSaving(false);
+
     setSuccess(
       "تم حفظ بيانات النشاط ومواعيد العمل بنجاح ✅"
     );
@@ -346,7 +526,8 @@ export default function BusinessPage() {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
           <div>
             <div className="text-2xl font-bold tracking-tight">
-              Booking<span className="text-blue-600">OS</span>
+              Booking
+              <span className="text-blue-600">OS</span>
             </div>
 
             <p className="mt-1 text-sm text-slate-500">
@@ -355,7 +536,9 @@ export default function BusinessPage() {
           </div>
 
           <button
-            onClick={() => router.push("/dashboard")}
+            onClick={() =>
+              router.push("/dashboard")
+            }
             className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
             العودة للوحة التحكم
@@ -643,6 +826,122 @@ export default function BusinessPage() {
               ))}
             </div>
           </section>
+
+          {/* Booking Link & QR Code */}
+
+          {businessId && (
+            <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+              <div className="mb-6">
+                <div className="mb-3 inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600">
+                  مشاركة الحجز
+                </div>
+
+                <h2 className="text-xl font-bold">
+                  رابط الحجز و QR Code
+                </h2>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                  شارك رابط الحجز مع عملائك أو اطبع
+                  QR Code وضعه داخل نشاطك ليتمكن
+                  العملاء من فتح صفحة الحجز بسرعة.
+                </p>
+              </div>
+
+              <div className="grid gap-8 lg:grid-cols-[1fr_300px] lg:items-center">
+                {/* Link Side */}
+
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                    رابط الحجز الخاص بنشاطك
+                  </label>
+
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <input
+                      type="text"
+                      readOnly
+                      value={bookingUrl}
+                      className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 outline-none"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={copyBookingLink}
+                      className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                    >
+                      {copied
+                        ? "تم النسخ ✓"
+                        : "نسخ الرابط"}
+                    </button>
+                  </div>
+
+                  <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                    <p className="text-sm font-bold text-blue-900">
+                      💡 شارك الرابط مع عملائك
+                    </p>
+
+                    <p className="mt-1 text-sm leading-6 text-blue-700">
+                      يمكنك إرساله على واتساب أو فيسبوك
+                      أو أي وسيلة تواصل، والعميل سيفتح
+                      صفحة الحجز مباشرة.
+                    </p>
+                  </div>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={downloadQRCode}
+                      disabled={!qrCodeUrl}
+                      className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      تحميل QR Code
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={printQRCode}
+                      disabled={!qrCodeUrl}
+                      className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      طباعة QR Code
+                    </button>
+                  </div>
+                </div>
+
+                {/* QR Side */}
+
+                <div className="flex flex-col items-center">
+                  <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                    {qrCodeUrl ? (
+                      <img
+                        src={qrCodeUrl}
+                        alt="QR Code للحجز"
+                        className="h-56 w-56"
+                      />
+                    ) : (
+                      <div className="flex h-56 w-56 items-center justify-center rounded-2xl bg-slate-50">
+                        <div className="text-center">
+                          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
+
+                          <p className="mt-3 text-xs text-slate-400">
+                            جاري إنشاء QR...
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="mt-4 text-center text-sm font-bold text-slate-700">
+                    امسح الكود للحجز
+                  </p>
+
+                  <p className="mt-1 text-center text-xs text-slate-400">
+                    اطبعه وضعه على المكتب أو في
+                    مكان واضح للعملاء
+                  </p>
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Messages */}
 
