@@ -17,32 +17,63 @@ export const metadata: Metadata = {
     default: "BookingOS",
     template: "%s | BookingOS",
   },
+
   description:
     "BookingOS — نظام إدارة الحجوزات أونلاين لأصحاب الأنشطة والخدمات.",
+
   applicationName: "BookingOS",
+
   keywords: [
     "BookingOS",
     "الحجوزات",
     "إدارة الحجوزات",
     "حجز أونلاين",
+    "Booking",
   ],
-  authors: [{ name: "Mohamed Rabie" }],
+
+  authors: [
+    {
+      name: "Mohamed Rabie",
+    },
+  ],
+
   creator: "Mohamed Rabie",
+
   openGraph: {
     title: "BookingOS 🚀",
+
     description:
       "نظام إدارة الحجوزات أونلاين — نظّم نشاطك واستقبل حجوزاتك بسهولة.",
+
     url: "https://booking-os-nu.vercel.app",
+
     siteName: "BookingOS",
+
     locale: "ar_EG",
+
     type: "website",
+
+    images: [
+      {
+        url: "/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "BookingOS - نظام إدارة الحجوزات أونلاين",
+      },
+    ],
   },
+
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
+
     title: "BookingOS 🚀",
+
     description:
       "نظام إدارة الحجوزات أونلاين لأصحاب الأنشطة والخدمات.",
+
+    images: ["/og-image.jpg"],
   },
+
   robots: {
     index: true,
     follow: true,
