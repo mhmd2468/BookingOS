@@ -205,11 +205,9 @@ export default function DashboardPage() {
   }
 
   function goToBookings() {
-    document
-      .getElementById("bookings")
-      ?.scrollIntoView({
-        behavior: "smooth",
-      });
+    document.getElementById("bookings")?.scrollIntoView({
+      behavior: "smooth",
+    });
   }
 
   // =========================
@@ -276,6 +274,84 @@ export default function DashboardPage() {
     }
 
     await copyBookingLink();
+  }
+
+  // =========================
+  // WhatsApp
+  // =========================
+
+  function formatEgyptianWhatsAppNumber(phone: string) {
+    let number = phone.trim();
+
+    // إزالة المسافات والشرطات والأقواس
+    number = number.replace(/[^\d+]/g, "");
+
+    // +20xxxxxxxxxx
+    if (number.startsWith("+20")) {
+      return number.substring(1);
+    }
+
+    // 20xxxxxxxxxx
+    if (number.startsWith("20")) {
+      return number;
+    }
+
+    // 01xxxxxxxxx
+    if (number.startsWith("01")) {
+      return "20" + number.substring(1);
+    }
+
+    // لو الرقم 10xxxxxxxxx بدون 0
+    if (number.startsWith("1") && number.length === 10) {
+      return "20" + number;
+    }
+
+    // fallback
+    return number;
+  }
+
+  function openWhatsAppForBooking(
+    booking: Booking,
+    status: "confirmed" | "cancelled"
+  ) {
+    const whatsappNumber = formatEgyptianWhatsAppNumber(
+      booking.customer_phone
+    );
+
+    if (!whatsappNumber) {
+      setError("رقم هاتف العميل غير صالح لإرسال رسالة WhatsApp.");
+      return;
+    }
+
+    const serviceName = getServiceName(booking.service_id);
+
+    let message = "";
+
+    if (status === "confirmed") {
+      message =
+        `مرحبًا ${booking.customer_name} 👋\n\n` +
+        `تم تأكيد حجزك بنجاح لدى ${businessName || "النشاط"} ✅\n\n` +
+        `🛎️ الخدمة: ${serviceName}\n` +
+        `📅 التاريخ: ${booking.booking_date}\n` +
+        `🕐 الوقت: ${booking.booking_time}\n\n` +
+        `نشكرك لاختيارك لنا ونتطلع لخدمتك ❤️`;
+    } else {
+      message =
+        `مرحبًا ${booking.customer_name} 👋\n\n` +
+        `نأسف لإبلاغك بأنه تم إلغاء حجزك لدى ${
+          businessName || "النشاط"
+        } ❌\n\n` +
+        `🛎️ الخدمة: ${serviceName}\n` +
+        `📅 التاريخ: ${booking.booking_date}\n` +
+        `🕐 الوقت: ${booking.booking_time}\n\n` +
+        `نعتذر عن أي إزعاج، ويمكنك التواصل معنا لحجز موعد آخر.`;
+    }
+
+    const whatsappUrl =
+      `https://wa.me/${whatsappNumber}` +
+      `?text=${encodeURIComponent(message)}`;
+
+    window.open(whatsappUrl, "_blank");
   }
 
   // =========================
@@ -446,6 +522,16 @@ export default function DashboardPage() {
     setBookingActionId(bookingId);
     setError("");
 
+    const booking = bookings.find(
+      (item) => item.id === bookingId
+    );
+
+    if (!booking) {
+      setError("لم يتم العثور على الحجز.");
+      setBookingActionId(null);
+      return;
+    }
+
     const { error } = await supabase
       .from("bookings")
       .update({
@@ -462,17 +548,20 @@ export default function DashboardPage() {
     }
 
     setBookings((currentBookings) =>
-      currentBookings.map((booking) =>
-        booking.id === bookingId
+      currentBookings.map((currentBooking) =>
+        currentBooking.id === bookingId
           ? {
-              ...booking,
+              ...currentBooking,
               status,
             }
-          : booking
+          : currentBooking
       )
     );
 
     setBookingActionId(null);
+
+    // فتح WhatsApp بعد نجاح تحديث الحجز
+    openWhatsAppForBooking(booking, status);
   }
 
   async function deleteBooking(bookingId: string) {
@@ -803,8 +892,6 @@ export default function DashboardPage() {
           {businessId && (
             <section className="mt-8 overflow-hidden rounded-3xl border border-blue-100 bg-white shadow-sm">
 
-              {/* Header */}
-
               <div className="bg-blue-600 px-6 py-6 text-white sm:px-8">
 
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -849,15 +936,9 @@ export default function DashboardPage() {
 
               </div>
 
-              {/* Body */}
-
               <div className="p-6 sm:p-8">
 
                 <div className="grid gap-8 lg:grid-cols-[1fr_300px] lg:items-center">
-
-                  {/* =========================
-                      Link
-                  ========================= */}
 
                   <div>
 
@@ -886,8 +967,6 @@ export default function DashboardPage() {
 
                     </div>
 
-                    {/* Actions */}
-
                     <div className="mt-4 flex flex-col gap-3 sm:flex-row">
 
                       <button
@@ -908,8 +987,6 @@ export default function DashboardPage() {
 
                     </div>
 
-                    {/* Info */}
-
                     <div className="mt-5 rounded-2xl bg-slate-50 p-4">
 
                       <p className="text-sm font-semibold text-slate-700">
@@ -924,10 +1001,6 @@ export default function DashboardPage() {
                     </div>
 
                   </div>
-
-                  {/* =========================
-                      QR Code
-                  ========================= */}
 
                   <div className="flex flex-col items-center">
 
@@ -968,8 +1041,6 @@ export default function DashboardPage() {
                     <p className="mt-1 text-center text-xs leading-5 text-slate-400">
                       اطبعه وضعه على المكتب أو في مكان واضح للعملاء
                     </p>
-
-                    {/* QR Actions */}
 
                     <div className="mt-4 grid w-full grid-cols-2 gap-2">
 
